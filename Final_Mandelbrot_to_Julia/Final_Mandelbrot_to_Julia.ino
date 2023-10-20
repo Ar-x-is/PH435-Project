@@ -1,43 +1,37 @@
+#include <Adafruit_GFX.h>
 #include <MCUFRIEND_kbv.h>
-#include <TouchScreen.h>
+
+MCUFRIEND_kbv tft;
+
+#define TFT_WIDTH 320
+#define TFT_HEIGHT 320
+
+#include <stdint.h>
+#include "TouchScreen.h"
 
 #define YP A2  // must be an analog pin, use "An" notation!
 #define XM A3  // must be an analog pin, use "An" notation!
 #define YM 8   // can be a digital pin
 #define XP 9   // can be a digital pin
-#define	BLACK  0x0000
-#define TFT_WIDTH 320
-#define TFT_HEIGHT 320
 
-// Create an instance of the TFT display
-MCUFRIEND_kbv tft;
 // For better pressure precision, we need to know the resistance
 // between X+ and X- Use any multimeter to read it
 // For the one we're using, its 300 ohms across the X plate
 TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
 
-// Define the properties of the Mandelbrot set
-const int maxIterations = 50;
-const double zoom = 100;
-const double offsetX = 0.0;
-const double offsetY = 0.0;
-
-void setup() {
-  // Initialize the TFT display
-  tft.reset();
-  uint16_t ID = tft.readID();
-  tft.begin(ID);
-  tft.setRotation(3);
-  tft.setTextSize(2);
-  tft.fillScreen(TFT_BLACK);
-  // Generate and display the Mandelbrot set
-  generateMandelbrot();
-}
-
+bool flag = false;
+bool drawflag = false;
 float xmin = -1.75;
 float xmax = 1.75;
 float ymin = -1.75;
 float ymax = 1.75;
+float x;
+float y;
+// Define the properties of the Mandelbrot set
+const int maxIterations = 20;
+const double zoom = 100;
+const double offsetX = 0.0;
+const double offsetY = 0.0;
 int max_iterations = 63;
 int cmap_data[][3] = {{243, 234, 244},
         {237, 231, 239},
@@ -102,52 +96,46 @@ int cmap_data[][3] = {{243, 234, 244},
         {243, 204, 130},
         {255, 216, 133},
         {255, 226, 134}};
+void setup() {
+  Serial.begin(9600);
 
-
-void loop() {
-  TSPoint p = ts.getPoint();
-   // Not used in this example
-
-  // select the c value based on p.x, p.y
-  // generateJuliaSet(c);
-
-  // delay(10000);
-
-  // go back to mandelbrot
-  // float a = 0.0;  // Set the initial 'a' value
-  // float a_step = 0.314;  // Adjust the step size as needed
-  
-  // for (int frame = 0; frame < 20; frame++) { // Adjust the number of frames as needed
-  drawJuliaSet(0.8,0.8);
-    // a += a_step;
-//}  
+  tft.reset();
+  uint16_t ID = tft.readID();
+  tft.begin(ID);
+  tft.setRotation(3);
+  tft.setTextSize(2);
+  tft.fillScreen(TFT_BLACK);
+  // flag = true;
 }
 
-void drawJuliaSet(float x, float y) {
-  for (int x = 0; x < TFT_WIDTH; x++) {
-    for (int y = 0; y < TFT_HEIGHT; y++) {
-      float zx = x * (xmax - xmin) / (TFT_WIDTH - 1) + xmin;
-      float zy = y * (ymax - ymin) / (TFT_HEIGHT - 1) + ymin;
-
-      float cx = x;
-      float cy = y;
-
-      int i;
-      for (i = 0; i < max_iterations; i++) {
-        float x2 = zx * zx;
-        float y2 = zy * zy;
-
-        if (x2 + y2 > 4.0) break;
-
-        float xtemp = x2 - y2 + cx;
-        zy = 2.0 * zx * zy + cy;
-        zx = xtemp;
-      }
-
-      int color[3] = {cmap_data[i]};
-      tft.drawPixel(x, y, tft.color565(color[0], color[1], color[2]));  
-    }
-  }
+void loop() {
+  tft.reset();
+  uint16_t ID = tft.readID();
+  tft.begin(ID);
+  tft.setRotation(3);
+  tft.setTextSize(2);
+  tft.fillScreen(TFT_BLACK);
+  generateMandelbrot();
+  // a point object holds x y and z coordinates
+  delay(5000);
+  TSPoint p = ts.getPoint();
+  if (p.z > ts.pressureThreshhold) {
+    x = (670 - p.x)/171.43;
+    y = (p.y - 517.5)/218.57;
+    Serial.print("X = "); Serial.print(x);
+    Serial.print("\tY = "); Serial.print(y);
+    // flag = false;
+    // drawflag = true;
+  } 
+  
+  tft.reset();
+  tft.begin(ID);
+  tft.setRotation(3);
+  tft.setTextSize(2);
+  tft.fillScreen(TFT_BLACK);
+  drawJuliaSet(x,y);
+  delay(5000);
+  // drawflag = false;
 }
 
 void generateMandelbrot() {
@@ -168,6 +156,32 @@ void generateMandelbrot() {
 
       int color[3] = {cmap_data[iteration]};
       tft.drawPixel(x, y, tft.color565(color[0], color[1], color[2])); 
+    }
+  }
+  flag = true;
+}
+void drawJuliaSet(float x1, float y1) {
+  for (int x = 0; x < TFT_WIDTH; x=x+2) {
+    for (int y = 0; y < TFT_HEIGHT; y=y+2) {
+      float zx = x * (xmax - xmin) / (TFT_WIDTH - 1) + xmin;
+      float zy = y * (ymax - ymin) / (TFT_HEIGHT - 1) + ymin;
+      float cx = x1;
+      float cy = y1;
+
+      int i;
+      for (i = 0; i < max_iterations; i++) {
+        float x2 = zx * zx;
+        float y2 = zy * zy;
+
+        if (x2 + y2 > 4.0) break;
+
+        float xtemp = x2 - y2 + cx;
+        zy = 2.0 * zx * zy + cy;
+        zx = xtemp;
+      }
+
+      int color[3] = {cmap_data[i]};
+      tft.drawPixel(x, y, tft.color565(color[0], color[1], color[2]));  
     }
   }
 }

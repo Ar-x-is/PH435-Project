@@ -98,7 +98,6 @@ void drawJuliaSet(float a) {
     for (int y = 0; y < TFT_HEIGHT; y++) {
       float zx = x * (xmax - xmin) / (TFT_WIDTH - 1) + xmin;
       float zy = y * (ymax - ymin) / (TFT_HEIGHT - 1) + ymin;
-
       float cx = 0.7885 * cos(a);
       float cy = 0.7885 * sin(a);
 
