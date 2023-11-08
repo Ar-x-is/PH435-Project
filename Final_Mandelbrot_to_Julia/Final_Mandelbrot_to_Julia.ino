@@ -27,9 +27,11 @@ float ymin = -1.75;
 float ymax = 1.75;
 float x;
 float y;
+float x_old = x;
+float y_old = y;
 // Define the properties of the Mandelbrot set
-const int maxIterations = 20;
-const double zoom = 100;
+const int maxIterations = 12;
+const double zoom = 80;
 const double offsetX = 0.0;
 const double offsetY = 0.0;
 int max_iterations = 63;
@@ -105,7 +107,6 @@ void setup() {
   tft.setRotation(3);
   tft.setTextSize(2);
   tft.fillScreen(TFT_BLACK);
-  // flag = true;
 }
 
 void loop() {
@@ -115,18 +116,24 @@ void loop() {
   tft.setRotation(3);
   tft.setTextSize(2);
   tft.fillScreen(TFT_BLACK);
+  // Draw white horizontal line from y=0 to y=320
+  tft.drawFastHLine(0, 160, 320, 0xFFFF);
+  // Draw white vertical line from x=0 to x=320
+  tft.drawFastVLine(160, 0, 320, 0xFFFF);
   generateMandelbrot();
   // a point object holds x y and z coordinates
-  delay(5000);
-  TSPoint p = ts.getPoint();
-  if (p.z > ts.pressureThreshhold) {
-    x = (670 - p.x)/171.43;
-    y = (p.y - 517.5)/218.57;
-    Serial.print("X = "); Serial.print(x);
-    Serial.print("\tY = "); Serial.print(y);
-    // flag = false;
-    // drawflag = true;
-  } 
+  while(x == x_old && y == y_old) {
+    Point p = ts.getPoint();
+    if (p.z > ts.pressureThreshhold && p.z < 1500) {
+      x = (670 - p.x)/171.43;
+      y = (p.y - 517.5)/218.57;
+      Serial.print("X = "); Serial.print(x);
+      Serial.print("\tY = "); Serial.print(y);
+    } 
+  }
+
+  x_old = x;
+  y_old = y;
   
   tft.reset();
   tft.begin(ID);
@@ -135,7 +142,6 @@ void loop() {
   tft.fillScreen(TFT_BLACK);
   drawJuliaSet(x,y);
   delay(5000);
-  // drawflag = false;
 }
 
 void generateMandelbrot() {
@@ -145,6 +151,10 @@ void generateMandelbrot() {
       double zy = 0;
       double cx = (x - TFT_WIDTH / 2.0) / zoom + offsetX;
       double cy = (y - TFT_HEIGHT / 2.0) / zoom + offsetY;
+
+      if (cx == 0 || cy == 0) {
+        continue;
+      }
 
       int iteration = 0;
       while (zx * zx + zy * zy < 4 && iteration < maxIterations) {
@@ -158,9 +168,19 @@ void generateMandelbrot() {
       tft.drawPixel(x, y, tft.color565(color[0], color[1], color[2])); 
     }
   }
-  flag = true;
 }
 void drawJuliaSet(float x1, float y1) {
+  tft.setRotation(0);
+  tft.setTextSize(2); // Set text size
+  tft.setCursor(60, 2); // Set the text cursor position
+  tft.setTextColor(0xFFFF); // Set text color (white)
+  tft.print("z = (");
+  tft.print(x1, 2); // Print x with 2 decimal places
+  tft.print(") + i(");
+  tft.print(y1, 2); // Print y with 2 decimal places
+  tft.print(")");
+
+  tft.setRotation(1);
   for (int x = 0; x < TFT_WIDTH; x=x+2) {
     for (int y = 0; y < TFT_HEIGHT; y=y+2) {
       float zx = x * (xmax - xmin) / (TFT_WIDTH - 1) + xmin;
